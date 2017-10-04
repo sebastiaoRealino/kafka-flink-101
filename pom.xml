@@ -89,7 +89,6 @@ under the License.
 			<version>${flink.version}</version>
 		</dependency>
 
-		<!-- Flink Connector Kafka | exclude Kafka implementation to use MapR -->
 		<dependency>
 			<groupId>org.apache.flink</groupId>
 			<artifactId>flink-connector-kafka-0.9_2.10</artifactId>

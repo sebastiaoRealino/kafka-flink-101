@@ -19,11 +19,27 @@
 package com.grallandco.demos;
 
 
+/*
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer09;
 import org.apache.flink.streaming.util.serialization.SimpleStringSchema;
+import org.apache.flink.streaming.util.serialization.JSONDeserializationSchema;
+*/
+
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.apache.flink.api.common.functions.FlatMapFunction;
+import org.apache.flink.api.common.functions.MapFunction;
+import org.apache.flink.api.common.functions.ReduceFunction;
+import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.flink.api.java.tuple.Tuple3;
+import org.apache.flink.streaming.api.datastream.DataStream;
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.windowing.time.Time;
+import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer09;
+import org.apache.flink.streaming.util.serialization.JSONDeserializationSchema;
+import org.apache.flink.util.Collector;
 
 import java.util.Properties;
 
@@ -39,22 +55,38 @@ public class ReadFromKafkaJson {
     properties.setProperty("group.id", "flink_consumer");
 
 
-    DataStream<String> stream = env
-            .addSource(new FlinkKafkaConsumer09<>("flink-demo", 
-            new JSONDeserializationSchema(), parameterTool.getProperties()));
- //           new SimpleStringSchema(), properties));
+    DataStream stream = env.addSource(
+            new FlinkKafkaConsumer09<>("flink-demo", 
+            new JSONDeserializationSchema(), 
+            properties)
+    );
+ 
+    stream
+            .rebalance()
+/*            .map(new MapFunction<ObjectNode, String>() {
+                  private static final long serialVersionUID = -6867736771747690202L;
 
-    message.rebalance().map(new MapFunction<ObjectNode, String>() {
-      private static final long serialVersionUID = -6867736771747690202L;
-
-      @Override
-      public String map(ObjectNode value) throws Exception {
-        return "Stream Value: " + value.get("time").asText();;
-      }
-    }).print();
+                  @Override
+                  public String map(ObjectNode value) throws Exception {
+                    return "Stream Value: " + value.get("time").asText();;
+                  }
+                })
+*/
+            .map(new AvgPrinter())
+            .print();
 
     env.execute();
   }
 
-
 }
+
+class AvgPrinter implements MapFunction<ObjectNode, String> {
+    private static final long serialVersionUID = -6867736771747690202L;
+    @Override
+    public String map(ObjectNode jsonEvent) throws Exception {
+        return  String.format("jsonEvent : %s", jsonEvent.get("time")) ;
+    }
+}
+
+
+
