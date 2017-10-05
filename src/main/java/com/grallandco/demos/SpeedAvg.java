@@ -37,9 +37,9 @@ import org.apache.flink.api.java.tuple.Tuple3;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.windowing.time.Time;
-import org.apache.flink.streaming.connectors.fs.DateTimeBucketer;
 import org.apache.flink.streaming.connectors.fs.SequenceFileWriter;
 import org.apache.flink.streaming.connectors.fs.bucketing.BucketingSink;
+import org.apache.flink.streaming.connectors.fs.bucketing.DateTimeBucketer;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer09;
 import org.apache.flink.streaming.util.serialization.JSONDeserializationSchema;
 import org.apache.flink.util.Collector;
@@ -63,6 +63,9 @@ public class SpeedAvg {
     // HadoopSink.setWriter(new SequenceFileWriter<IntWritable, Text>());
     // HadoopSink.setBatchSize(1024 * 1024 * 400); // this is 400 MB,
 
+    BucketingSink<Tuple2<IntWritable, Text>> HadoopSink = new BucketingSink<Tuple2<IntWritable, Text>>("/base/path")
+    .setWriter(new SequenceFileWriter<IntWritable, Text>())
+    .setBucketer(new DateTimeBucketer("yyyy-MM-dd--HHmm"));
 
     DataStream stream = env.addSource(
             new FlinkKafkaConsumer09<>("flink-demo", 
@@ -79,7 +82,7 @@ public class SpeedAvg {
             .map(new AvgPrinter())
             .print();
 
-    // stream.addSink(HadoopSink);
+    stream.addSink(HadoopSink);
 
     env.execute();
     }
