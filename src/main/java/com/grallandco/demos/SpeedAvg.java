@@ -37,10 +37,14 @@ import org.apache.flink.api.java.tuple.Tuple3;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.windowing.time.Time;
+import org.apache.flink.streaming.connectors.fs.DateTimeBucketer;
+import org.apache.flink.streaming.connectors.fs.SequenceFileWriter;
+import org.apache.flink.streaming.connectors.fs.bucketing.BucketingSink;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer09;
 import org.apache.flink.streaming.util.serialization.JSONDeserializationSchema;
 import org.apache.flink.util.Collector;
-
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.Text;
 import java.util.Properties;
 
 public class SpeedAvg {
@@ -54,6 +58,11 @@ public class SpeedAvg {
     properties.setProperty("bootstrap.servers", "localhost:9092");
     properties.setProperty("group.id", "flink_consumer");
 
+    // BucketingSink<String> HadoopSink = new BucketingSink<String>("/base/path");
+    // HadoopSink.setBucketer(new DateTimeBucketer<String>("yyyy-MM-dd--HHmm"));
+    // HadoopSink.setWriter(new SequenceFileWriter<IntWritable, Text>());
+    // HadoopSink.setBatchSize(1024 * 1024 * 400); // this is 400 MB,
+
 
     DataStream stream = env.addSource(
             new FlinkKafkaConsumer09<>("flink-demo", 
@@ -64,11 +73,13 @@ public class SpeedAvg {
 
     stream  .flatMap(new TelemetryJsonParser())
             .keyBy(0)
-            .timeWindow(Time.seconds(10))
+            .timeWindow(Time.seconds(5))
             .reduce(new AvgReducer())
             .flatMap(new AvgMapper())
             .map(new AvgPrinter())
             .print();
+
+    // stream.addSink(HadoopSink);
 
     env.execute();
     }

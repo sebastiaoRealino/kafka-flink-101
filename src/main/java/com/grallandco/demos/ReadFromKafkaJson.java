@@ -72,7 +72,7 @@ public class ReadFromKafkaJson {
                   }
                 })
 */
-            .map(new AvgPrinter())
+            .map(new AvgPrinterJson())
             .print();
 
     env.execute();
@@ -80,7 +80,7 @@ public class ReadFromKafkaJson {
 
 }
 
-class AvgPrinter implements MapFunction<ObjectNode, String> {
+class AvgPrinterJson implements MapFunction<ObjectNode, String> {
     private static final long serialVersionUID = -6867736771747690202L;
     @Override
     public String map(ObjectNode jsonEvent) throws Exception {
