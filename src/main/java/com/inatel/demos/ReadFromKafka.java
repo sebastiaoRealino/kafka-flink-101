@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package com.grallandco.demos;
+package com.inatel.demos;
 
 
 import org.apache.flink.api.common.functions.MapFunction;

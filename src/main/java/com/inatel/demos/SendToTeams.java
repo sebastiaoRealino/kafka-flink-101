@@ -16,8 +16,7 @@
  * limitations under the License.
  */
 
-package com.grallandco.demos;
-
+package com.inatel.demos;
 
 /*
 import org.apache.flink.api.common.functions.MapFunction;
@@ -38,15 +37,17 @@ import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer09;
+import org.apache.flink.streaming.connectors.rabbitmq.RMQSink;
+import org.apache.flink.streaming.connectors.rabbitmq.common.RMQConnectionConfig;
 import org.apache.flink.streaming.util.serialization.JSONDeserializationSchema;
+import org.apache.flink.streaming.util.serialization.SimpleStringSchema;
 import org.apache.flink.util.Collector;
 
 import java.util.Properties;
 
-public class ReadFromKafkaJson {
+public class SendToTeams {
 
-
-  public static void main(String[] args) throws Exception {
+    public static void main(String[] args) throws Exception {
     // create execution environment
     StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
@@ -54,6 +55,13 @@ public class ReadFromKafkaJson {
     properties.setProperty("bootstrap.servers", "localhost:9092");
     properties.setProperty("group.id", "flink_consumer");
 
+    final RMQConnectionConfig connectionConfig = new RMQConnectionConfig.Builder()
+    .setHost("localhost")
+    .setPort(5672)
+    .setVirtualHost("/")
+    .setUserName("guest")
+    .setPassword("guest")
+    .build();
 
     DataStream stream = env.addSource(
             new FlinkKafkaConsumer09<>("flink-demo", 
@@ -61,32 +69,24 @@ public class ReadFromKafkaJson {
             properties)
     );
  
-    stream
-            .rebalance()
-/*            .map(new MapFunction<ObjectNode, String>() {
-                  private static final long serialVersionUID = -6867736771747690202L;
-
-                  @Override
-                  public String map(ObjectNode value) throws Exception {
-                    return "Stream Value: " + value.get("time").asText();;
-                  }
-                })
-*/
-            .map(new AvgPrinterJson())
-            .print();
-
+    
+    RMQSink<String> TeamSink = new RMQSink<String>(
+        connectionConfig,            // config for the RabbitMQ connection
+        "queueName",                 // name of the RabbitMQ queue to send messages to
+        new SimpleStringSchema());  // serialization schema to turn Java objects to messages
+    stream.print();
+    stream.addSink(TeamSink);
+    
     env.execute();
   }
 
-}
+    class AvgPrinterJson implements MapFunction<ObjectNode, String> {
+        private static final long serialVersionUID = -6867736771747690202L;
 
-class AvgPrinterJson implements MapFunction<ObjectNode, String> {
-    private static final long serialVersionUID = -6867736771747690202L;
-    @Override
-    public String map(ObjectNode jsonEvent) throws Exception {
-        return  String.format("jsonEvent : %s", jsonEvent.get("time")) ;
+        @Override
+        public String map(ObjectNode jsonEvent) throws Exception {
+            return String.format("jsonEvent : %s", jsonEvent.get("time"));
+        }
     }
+
 }
-
-
-
