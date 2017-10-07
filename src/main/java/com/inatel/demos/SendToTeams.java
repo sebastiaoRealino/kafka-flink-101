@@ -18,6 +18,8 @@
 
 package com.inatel.demos;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 /*
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.streaming.api.datastream.DataStream;
@@ -48,6 +50,16 @@ import java.util.Properties;
 public class SendToTeams {
 
     public static void main(String[] args) throws Exception {
+
+        String RabbitMQTopic = "default_topic";
+        try {
+            RabbitMQTopic = args[0];
+        }
+        catch (ArrayIndexOutOfBoundsException e){
+            System.out.println("Please, pass a queue name as argument.");
+        }
+        System.out.println("Using queue name: " + args[0]);
+
     // create execution environment
     StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
@@ -65,20 +77,40 @@ public class SendToTeams {
 
     DataStream stream = env.addSource(
             new FlinkKafkaConsumer09<>("flink-demo", 
-            new JSONDeserializationSchema(), 
+            new SimpleStringSchema(), 
             properties)
     );
  
     
     RMQSink<String> TeamSink = new RMQSink<String>(
-        connectionConfig,            // config for the RabbitMQ connection
-        "queueName",                 // name of the RabbitMQ queue to send messages to
-        new SimpleStringSchema());  // serialization schema to turn Java objects to messages
-    stream.print();
+        connectionConfig,               // config for the RabbitMQ connection
+        RabbitMQTopic,                  // name of the RabbitMQ queue to send messages to
+        new SimpleStringSchema());      // serialization schema to turn Java objects to messages
+    
+    stream
+        .flatMap(new TelemetryJsonParser())
+        .print();
     stream.addSink(TeamSink);
     
     env.execute();
   }
+
+     // FlatMap Function - Json Parser
+    // Receive JSON data from Kafka broker and parse car number, speed and counter
+    
+    // {"Car": 9, "time": "52.196000", "telemetry": {"Vaz": "1.270000", "Distance": "4.605865", "LapTime": "0.128001", 
+    // "RPM": "591.266113", "Ay": "24.344515", "Gear": "3.000000", "Throttle": "0.000000", 
+    // "Steer": "0.207988", "Ax": "-17.551264", "Brake": "0.282736", "Fuel": "1.898847", "Speed": "34.137680"}}
+
+    static class TelemetryJsonParser implements FlatMapFunction<String, String> {
+        @Override
+        public void flatMap(String jsonTelemetry, Collector<String> out) throws Exception {
+            ObjectNode json = new ObjectMapper().readValue(jsonTelemetry, ObjectNode.class);
+            String carNumber = "car" + json.get("Car").asText();
+            float speed = json.get("telemetry").get("Speed").floatValue() * 18f / 5f; // convert to km/h
+            out.collect(new String("Teste!"));
+        }
+    }
 
     class AvgPrinterJson implements MapFunction<ObjectNode, String> {
         private static final long serialVersionUID = -6867736771747690202L;
