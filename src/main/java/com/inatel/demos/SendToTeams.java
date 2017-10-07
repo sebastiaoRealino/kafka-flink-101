@@ -49,17 +49,22 @@ import java.util.Properties;
 
 public class SendToTeams {
 
+    public static String RabbitMQTopic = "default_topic";
+    public static String CarNumberFilter = "3";
+    
     public static void main(String[] args) throws Exception {
 
-        String RabbitMQTopic = "default_topic";
+
         try {
             RabbitMQTopic = args[0];
+            CarNumberFilter = args[1];
         }
         catch (ArrayIndexOutOfBoundsException e){
-            System.out.println("Please, pass a queue name as argument.");
+            System.out.println("Please, enter a queue name and a car number as argument.");
         }
         System.out.println("Using queue name: " + args[0]);
-
+        System.out.println("Using Car Number filter: " + args[1]);
+        
     // create execution environment
     StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
@@ -93,7 +98,8 @@ public class SendToTeams {
     stream.addSink(TeamSink);
     
     env.execute();
-  }
+
+    }
 
      // FlatMap Function - Json Parser
     // Receive JSON data from Kafka broker and parse car number, speed and counter
@@ -104,11 +110,13 @@ public class SendToTeams {
 
     static class TelemetryJsonParser implements FlatMapFunction<String, String> {
         @Override
-        public void flatMap(String jsonTelemetry, Collector<String> out) throws Exception {
-            ObjectNode json = new ObjectMapper().readValue(jsonTelemetry, ObjectNode.class);
-            String carNumber = "car" + json.get("Car").asText();
-            float speed = json.get("telemetry").get("Speed").floatValue() * 18f / 5f; // convert to km/h
-            out.collect(new String("Teste!"));
+        public void flatMap(String telemetry, Collector<String> out) throws Exception {
+            ObjectNode jsonTelemetry = new ObjectMapper().readValue(telemetry, ObjectNode.class);
+            int carNumber = jsonTelemetry.get("Car").asInt();
+			if(carNumber == Integer.parseInt(CarNumberFilter))
+            {
+                out.collect(telemetry);
+            }
         }
     }
 
@@ -120,5 +128,4 @@ public class SendToTeams {
             return String.format("jsonEvent : %s", jsonEvent.get("time"));
         }
     }
-
 }
