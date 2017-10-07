@@ -25,12 +25,17 @@ import org.apache.flink.streaming.connectors.fs.bucketing.DateTimeBucketer;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer09;
 import org.apache.flink.streaming.util.serialization.SimpleStringSchema;
 import java.util.Properties;
-
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 public class StoreHDFS {
 
-
   public static void main(String[] args) throws Exception {
+
+    DateFormat dateFormat = new SimpleDateFormat("HH-mm-ss");
+    Date date = new Date();
+    
     // create execution environment
     StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
@@ -38,21 +43,20 @@ public class StoreHDFS {
     properties.setProperty("bootstrap.servers", "localhost:9092");
     properties.setProperty("group.id", "flink_consumer");
 
-    DataStream stream = env.addSource(
-      new FlinkKafkaConsumer09<>("flink-demo", 
-      new SimpleStringSchema(), 
-      properties)
-);
+    DataStream stream = env.addSource(new FlinkKafkaConsumer09<>("flink-demo", new SimpleStringSchema(), properties));
 
     String basePath = "/hdfsroot"; // Here is you output path
-    
+
     BucketingSink<String> HadoopSink = new BucketingSink<>(basePath);
-    HadoopSink.setBucketer(new DateTimeBucketer("yyyy-MM-dd--HHmm"));
-    // HadoopSink.setWriter(new SequenceFileWriter<IntWritable, Text>())
     
+    HadoopSink.setBucketer(new DateTimeBucketer("yyyy-MM-dd--HH"));
+    HadoopSink.setPendingPrefix(dateFormat.format(date));
+    HadoopSink.setInactiveBucketCheckInterval(3000);
+    HadoopSink.setInactiveBucketThreshold(5000);
+
     stream.print();
     stream.addSink(HadoopSink);
-    
+
     env.execute();
-    }
+  }
 }

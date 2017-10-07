@@ -18,30 +18,15 @@
 
 package com.inatel.demos;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-/*
-import org.apache.flink.api.common.functions.MapFunction;
-import org.apache.flink.streaming.api.datastream.DataStream;
-import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer09;
-import org.apache.flink.streaming.util.serialization.SimpleStringSchema;
-import org.apache.flink.streaming.util.serialization.JSONDeserializationSchema;
-*/
-
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.api.common.functions.MapFunction;
-import org.apache.flink.api.common.functions.ReduceFunction;
-import org.apache.flink.api.java.tuple.Tuple2;
-import org.apache.flink.api.java.tuple.Tuple3;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer09;
 import org.apache.flink.streaming.connectors.rabbitmq.RMQSink;
 import org.apache.flink.streaming.connectors.rabbitmq.common.RMQConnectionConfig;
-import org.apache.flink.streaming.util.serialization.JSONDeserializationSchema;
 import org.apache.flink.streaming.util.serialization.SimpleStringSchema;
 import org.apache.flink.util.Collector;
 
@@ -73,12 +58,12 @@ public class SendToTeams {
     properties.setProperty("group.id", "flink_consumer");
 
     final RMQConnectionConfig connectionConfig = new RMQConnectionConfig.Builder()
-    .setHost("localhost")
-    .setPort(5672)
-    .setVirtualHost("/")
-    .setUserName("guest")
-    .setPassword("guest")
-    .build();
+        .setHost("localhost")
+        .setPort(5672)
+        .setVirtualHost("/")
+        .setUserName("guest")
+        .setPassword("guest")
+        .build();
 
     DataStream stream = env.addSource(
             new FlinkKafkaConsumer09<>("flink-demo", 
@@ -95,13 +80,14 @@ public class SendToTeams {
     stream
         .flatMap(new TelemetryJsonParser())
         .print();
+    
     stream.addSink(TeamSink);
     
     env.execute();
 
     }
 
-     // FlatMap Function - Json Parser
+    // FlatMap Function - Json Parser
     // Receive JSON data from Kafka broker and parse car number, speed and counter
     
     // {"Car": 9, "time": "52.196000", "telemetry": {"Vaz": "1.270000", "Distance": "4.605865", "LapTime": "0.128001", 
@@ -120,12 +106,4 @@ public class SendToTeams {
         }
     }
 
-    class AvgPrinterJson implements MapFunction<ObjectNode, String> {
-        private static final long serialVersionUID = -6867736771747690202L;
-
-        @Override
-        public String map(ObjectNode jsonEvent) throws Exception {
-            return String.format("jsonEvent : %s", jsonEvent.get("time"));
-        }
-    }
 }

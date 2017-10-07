@@ -18,16 +18,6 @@
 
 package com.inatel.demos;
 
-
-/*
-import org.apache.flink.api.common.functions.MapFunction;
-import org.apache.flink.streaming.api.datastream.DataStream;
-import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer09;
-import org.apache.flink.streaming.util.serialization.SimpleStringSchema;
-import org.apache.flink.streaming.util.serialization.JSONDeserializationSchema;
-*/
-
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.api.common.functions.MapFunction;
@@ -43,7 +33,6 @@ import org.apache.flink.util.Collector;
 import java.util.Properties;
 
 public class SpeedAvg {
-
 
   public static void main(String[] args) throws Exception {
     // create execution environment
