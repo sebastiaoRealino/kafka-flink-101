@@ -23,15 +23,23 @@ import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer09;
 import org.apache.flink.streaming.util.serialization.SimpleStringSchema;
+import org.apache.flink.api.java.utils.ParameterTool;
 
 import java.util.Properties;
 
 public class ReadFromKafka {
 
   public static void main(String[] args) throws Exception {
+    
+    // Checking input parameters
+		final ParameterTool params = ParameterTool.fromArgs(args);
+    
     // create execution environment
     StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
+    // make parameters available in the web interface
+		env.getConfig().setGlobalJobParameters(params);
+    
     Properties properties = new Properties();
     properties.setProperty("bootstrap.servers", "localhost:9092");
     properties.setProperty("group.id", "flink_consumer");
@@ -47,7 +55,7 @@ public class ReadFromKafka {
       }
     }).print();
 
-    env.execute();
+    env.execute("Read From Kafka");
   }
 
 }
