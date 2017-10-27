@@ -79,9 +79,7 @@ public class SendToTeams {
     
     stream
         .flatMap(new TelemetryJsonParser())
-        .print();
-    
-    stream.addSink(TeamSink);
+        .addSink(TeamSink);
     
     env.execute();
 
