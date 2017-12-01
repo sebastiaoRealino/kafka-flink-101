@@ -51,7 +51,7 @@ public class SpeedAvg {
 
     stream  .flatMap(new TelemetryJsonParser())
             .keyBy(0)
-            .timeWindow(Time.seconds(5))
+            .timeWindow(Time.seconds(3))//"Janela" de conjunto de informações definida de 3 em 3 segundos.
             .reduce(new AvgReducer())
             .flatMap(new AvgMapper())
             .map(new AvgPrinter())
@@ -60,46 +60,47 @@ public class SpeedAvg {
     env.execute();
     }
 
-    // FlatMap Function - Json Parser
-    // Receive JSON data from Kafka broker and parse car number, speed and counter
-    
-    // {"Car": 9, "time": "52.196000", "telemetry": {"Vaz": "1.270000", "Distance": "4.605865", "LapTime": "0.128001", 
-    // "RPM": "591.266113", "Ay": "24.344515", "Gear": "3.000000", "Throttle": "0.000000", 
-    // "Steer": "0.207988", "Ax": "-17.551264", "Brake": "0.282736", "Fuel": "1.898847", "Speed": "34.137680"}}
 
+    //Recebe o JSON do Kafka broker e converte car, gear e inicializa um contador no qual indicará a quantidade de vezes
+    //que a marcha de cada carro for trocada
     static class TelemetryJsonParser implements FlatMapFunction<ObjectNode, Tuple3<String, Float, Integer>> {
       @Override
       public void flatMap(ObjectNode jsonTelemetry, Collector<Tuple3<String, Float, Integer>> out) throws Exception {
         String carNumber = "car" + jsonTelemetry.get("Car").asText();
-        float speed = jsonTelemetry.get("telemetry").get("Speed").floatValue() * 18f/5f; // convert to km/h
-        out.collect(new Tuple3<>(carNumber,  speed, 1 ));
+        float gear = jsonTelemetry.get("telemetry").get("Gear").floatValue(); 
+        out.collect(new Tuple3<>(carNumber,  gear, 1 ));
       }
     }
 
     // Reduce Function - Sum samples and count
-    // This funciton return, for each car, the sum of two speed measurements and increment a conter.
-    // The counter is used for the average calculation.
+    // Essa função compara, para cada carro, a marcha atual com a marcha anterior. Caso elas sejam diferentes, inclementa um contator.
+    // TODO: Remover value1.f1 no retorno da tupla (remover definições de Tupla3 para Tupla2).
     static class AvgReducer implements ReduceFunction<Tuple3<String, Float, Integer>> {
       @Override
       public Tuple3<String, Float, Integer> reduce(Tuple3<String, Float,Integer> value1, Tuple3<String, Float, Integer> value2) {
-        return new Tuple3<>(value1.f0, value1.f1 + value2.f1, value1.f2+1);
+        int isSameValue = Float.compare(value1.f1,value2.f1);
+        if (isSameValue != 0) {
+          value1.f2++;
+        } 
+        return new Tuple3<>(value1.f0, value1.f1, value1.f2);
       }
     }
 
     // FlatMap Function - Average
-    // Calculates the average
-    static class AvgMapper implements FlatMapFunction<Tuple3<String, Float, Integer>, Tuple2<String, Float>> {
+    // Envia para a classe AvgPrinter o carro em questão e a quantidade de vezes que a marcha foi trocada no intervalo (3 segundos no caso).
+    static class AvgMapper implements FlatMapFunction<Tuple3<String, Float, Integer>, Tuple2<String, Integer>> {
       @Override
-      public void flatMap(Tuple3<String, Float, Integer> carInfo, Collector<Tuple2<String, Float>> out) throws Exception {
-        out.collect(  new Tuple2<>( carInfo.f0 , carInfo.f1/carInfo.f2 )  );
+      public void flatMap(Tuple3<String, Float, Integer> carInfo, Collector<Tuple2<String, Integer>> out) throws Exception {
+        out.collect(  new Tuple2<>( carInfo.f0 , carInfo.f2 )  );
       }
     }
 
-    // Map Function - Print average    
-    static class AvgPrinter implements MapFunction<Tuple2<String, Float>, String> {
+    // Map Function - Print average
+    //Exibe a string montada com os valores recebidos.  
+    static class AvgPrinter implements MapFunction<Tuple2<String, Integer>, String> {
       @Override
-      public String map(Tuple2<String, Float> avgEntry) throws Exception {
-        return  String.format("Avg speed for %s : %.2f km/h ", avgEntry.f0 , avgEntry.f1 ) ;
+      public String map(Tuple2<String, Integer> avgEntry) throws Exception {
+        return  String.format("Marcha do carro %s trocada %d vezes em 3 segundos ", avgEntry.f0 , avgEntry.f1 ) ;
       }
     }
 
